@@ -6,8 +6,8 @@ author baiyu
 
 
 
-g_shapenet_path = '/media/admin-bai/000CA9E800027341/DATA/RenderForCNN-master/datasets/shapenetcore'
-g_blender_excutable_path = '/home/admin-bai/Downloads/blender-2.79b-linux-glibc219-x86_64/blender'
+g_shapenet_path = '/media/sda1/datasets/extracted/ShapeNet'
+g_blender_excutable_path = '/home/minghanz/Packages/blender-2.82a-linux64/blender'
 
 #if you have multiple viewpoint files, add to the dict
 #files contains azimuth,elevation,tilt angles and distance for each row
@@ -19,17 +19,25 @@ g_view_point_file ={
     'bed' : 'view_points/bed.txt'
 }
 
-g_render_objs = ['chair', 'table', 'sofa', 'bed', 'bottle']
+# g_render_objs = ['chair', 'table', 'sofa', 'bed', 'bottle']
+g_render_objs = ['car']
 
 #change this path to your background image folder
-g_background_image_path = 'background_image'
+# g_background_image_path = 'background_image'
+# g_background_image_path = '/media/sda1/datasets/extracted/STREETS/2018-8-21_2018-8-27/2018-8-21/Almond at Julie North'
+g_background_image_path = '/media/sda1/datasets/extracted/COCO/val2017'
+g_background_source = 'COCO'    
+## If g_background_source is specified as 'COCO', the background will be from COCO dataset, and the category of background images will be checked to be mutual exclusive with object categories. 
+## Currently only support 'car' because of inconsistency between the taxonomy of the two datasets. 
+## Otherwise all background images are loaded
+g_background_source_annotation = "/media/sda1/datasets/extracted/COCO/annotations/instances_val2017.json"
 
 #folders to store synthetic data
-g_syn_rgb_folder = 'syn_rgb'
-g_syn_depth_folder = 'syn_depth'
-g_syn_pose_folder = 'syn_pose'
-g_temp = 'tmp_data'
-g_result_dict = 'result.p'
+g_syn_rgb_folder = '/media/sda1/datasets/extracted/shapenet_test/syn_rgb'
+g_syn_depth_folder = '/media/sda1/datasets/extracted/shapenet_test/syn_depth'
+g_syn_pose_folder = '/media/sda1/datasets/extracted/shapenet_test/syn_pose'
+g_temp = '/media/sda1/datasets/extracted/shapenet_test/tmp_data'
+g_result_dict = '/media/sda1/datasets/extracted/shapenet_test/result.p'
 
 #background image composite
 #enum in [‘RELATIVE’, ‘ABSOLUTE’, ‘SCENE_SIZE’, ‘RENDER_SIZE’], default ‘RELATIVE’
@@ -63,8 +71,8 @@ g_depth_use_file_extension = True
 g_engine_type = 'CYCLES'
 
 #output image size =  (g_resolution_x * resolution_percentage%, g_resolution_y * resolution_percentage%)
-g_resolution_x = 640
-g_resolution_y = 480
+g_resolution_x = 300
+g_resolution_y = 300
 g_resolution_percentage = 100
 
 

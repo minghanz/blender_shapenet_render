@@ -13,7 +13,6 @@ from render_helper import *
 from settings import *
 
 
-
 if __name__ == '__main__':
 
     #you could also just comment these 4 lines after run it once
@@ -24,9 +23,11 @@ if __name__ == '__main__':
     #2 models per category
     #3 vps for each model(each vp will be used for only once)
     print("sampling data.....")
-    result_dict = random_sample_objs_and_vps(10, 3)
+    result_dict = random_sample_objs_and_vps(0, 3)
     if not os.path.exists(g_temp):
         os.mkdir(g_temp)
+
+    print("number of objects:", len(result_dict))
 
     #I need to serialize path ad vp since subprocess.run can't pass 
     #python object

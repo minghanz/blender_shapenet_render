@@ -30,6 +30,8 @@ from settings import *
 VP = namedtuple('VP',['azimuth', 'elevation', 'tilt', 'distance'])
 Model = namedtuple('Model', ['path', 'vps'])
 
+from vp_generator import gen_vp_list
+
 def load_viewpoint(viewpoint_file):
     """read viewpoints from a file, can only read one file at once
 
@@ -162,7 +164,7 @@ def random_sample_objs(num_per_cat):
 
     Returns:
         vps: a dictionary contains category name and its corresponding
-            obj file path
+            obj file paths
     """
 
     obj_path_lists = load_object_lists(g_render_objs)
@@ -170,9 +172,14 @@ def random_sample_objs(num_per_cat):
 
     for cat, pathes in zip(g_render_objs, obj_path_lists):
         pathes = list(pathes)
-        random.shuffle(pathes)
-        samples = random.sample(pathes, num_per_cat)
-        obj_path_dict[cat] = samples
+        if num_per_cat == 0:
+            ## load all objects
+            obj_path_dict[cat] = pathes
+        else:
+            ## sample a subset of the objects
+            random.shuffle(pathes)
+            samples = random.sample(pathes, num_per_cat)
+            obj_path_dict[cat] = samples
     
     return obj_path_dict
     
@@ -207,6 +214,40 @@ def random_sample_vps(obj_path_dict, num_per_model):
         result_dict[cat] = models
     return result_dict 
 
+def random_sample_vps_realtime(obj_path_dict, num_per_model):
+    """Instead of load view points from file, we randomly sample it here. """
+    result_dict = {}
+    for cat in g_render_objs:
+        pathes = obj_path_dict[cat]
+        models = []
+        for p in pathes: 
+            samples = gen_vp_list(num_per_model)
+            models.append(Model(p, samples))
+            
+        result_dict[cat] = models
+    return result_dict 
+
+def gen_list_of_valid_background_img():
+    """Here we generate a list of image files from COCO dataset as background images. 
+    We exclude images with vehicles, since we want to add rendered vehicles in the foreground. """
+    background_images = os.listdir(g_background_image_path)
+
+    if g_background_source != 'COCO' or g_render_objs != ['car']:
+        valid_bg_images = [os.path.join(g_background_image_path, f) for f in background_images]
+    else:
+        from coco import COCO
+        from bg_img_coco import get_img_ids_from_cat_name
+        ### load coco image info, exclude the images with vehicles
+        coco_val2017 = COCO(annotation_file=g_background_source_annotation)
+        veh_name_list = ["vehicle"]
+        veh_img_ids = get_img_ids_from_cat_name(coco_val2017, veh_name_list)
+
+        ### generate list of paths of background images
+        valid_bg_images = [os.path.join(g_background_image_path, f) for f in background_images if int(f.split(".")[0]) not in veh_img_ids]
+    
+    return valid_bg_images
+
+
 def random_sample_objs_and_vps(model_num_per_cat, vp_num_per_model):
     """wrapper function for randomly sample model and viewpoints
     and return the result, each category in g_render_objs contains
@@ -223,7 +264,8 @@ def random_sample_objs_and_vps(model_num_per_cat, vp_num_per_model):
     """
 
     obj_path_dict = random_sample_objs(model_num_per_cat)
-    result_dict = random_sample_vps(obj_path_dict, vp_num_per_model)
+    # result_dict = random_sample_vps(obj_path_dict, vp_num_per_model)
+    result_dict = random_sample_vps_realtime(obj_path_dict, vp_num_per_model)
 
     return result_dict
 
