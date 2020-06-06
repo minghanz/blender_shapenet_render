@@ -17,7 +17,7 @@ def read_bg_image_anno(fpath):
 def gen_rand_vp():
     azimuth = random.random() * 360
     # azimuth = 0
-    elevation = random.random() * 90
+    elevation = random.random() * 60
     # elevation = 0
     # tilt = random.uniform(-10, 10)
     tilt = 0
@@ -82,7 +82,7 @@ def get_focal_len_from_obj_and_pose(obj, cam, view_dist=None, fpath=None):
 
     return new_focal_len
 
-def get_bot_pts(obj, fpath=None):
+def get_bot_pts(obj, fpath=None, obj_id=0):
     """This function obtains the lowest points on each tire as feature point of the vehicle object"""
 
     ### get the mesh vertices of the object
@@ -120,7 +120,7 @@ def get_bot_pts(obj, fpath=None):
     
     return p_output_homo
 
-def project_pts_to_cam(p_output_homo, cam_pos, K_homo, fpath=None):
+def project_pts_to_cam(p_output_homo, cam_pos, K_homo, fpath=None, obj_id=0):
     """Project point coordinates in 3D world space to image coordinates"""
 
     ### transform to camera coordinate (3D)
@@ -132,16 +132,16 @@ def project_pts_to_cam(p_output_homo, cam_pos, K_homo, fpath=None):
     ### write to file
     if fpath is not None:
         with open(fpath, 'a') as f:
-            write_np_to_txt_like_kitti(f, cam_pos, "cam_pos_inv")
-            write_np_to_txt_like_kitti(f, pts_in_cam_ref.T, "pts_in_cam")
-            write_np_to_txt_like_kitti(f, K_homo, "K")
-            write_np_to_txt_like_kitti(f, pts_proj.T, "pts_proj")
+            # write_np_to_txt_like_kitti(f, cam_pos, "cam_pos_inv")
+            write_np_to_txt_like_kitti(f, pts_in_cam_ref.T, "pts_in_cam_{}".format(obj_id))
+            # write_np_to_txt_like_kitti(f, K_homo, "K")
+            write_np_to_txt_like_kitti(f, pts_proj.T, "pts_proj_{}".format(obj_id))
             # f.write("cam_pos:\n")
             # f.write(np.array_str(np.array(cam_obj.matrix_world)) )
 
-    return pts_proj
+    return pts_proj, pts_in_cam_ref
 
-def get_2d_bbox(obj, cam_pos, K_homo, obj_pose=None, fpath=None):
+def get_2d_bbox(obj, cam_pos, K_homo, obj_pose=None, fpath=None, obj_id=0):
     if obj_pose is None:
         pts = np.array([obj.matrix_world @ v.co for v in obj.data.vertices])    # N*3
         pts_homo = np.concatenate((pts, np.ones((pts.shape[0], 1))), axis=1).T # 4*N
@@ -150,7 +150,7 @@ def get_2d_bbox(obj, cam_pos, K_homo, obj_pose=None, fpath=None):
         pts_homo = np.concatenate((pts, np.ones((pts.shape[0], 1))), axis=1).T # 4*N
         pts_homo = np.matmul(obj_pose, pts_homo)
 
-    pts_proj = project_pts_to_cam(pts_homo, cam_pos, K_homo)
+    pts_proj, pts_in_cam_ref = project_pts_to_cam(pts_homo, cam_pos, K_homo)
 
     u_min = pts_proj[0].min()
     u_max = pts_proj[0].max()
@@ -159,10 +159,36 @@ def get_2d_bbox(obj, cam_pos, K_homo, obj_pose=None, fpath=None):
 
     if fpath is not None:
         with open(fpath, 'a') as f:
-            f.write("bbox_uuvv: {} {} {} {}\n".format(u_min, u_max, v_min, v_max))
+            f.write("bbox_{}: {} {} {} {}\n".format(obj_id, u_min, u_max, v_min, v_max))
 
     return u_min, u_max, v_min, v_max
 
+def write_cam_pose(cam_pos, K_homo, fpath):
+    ### write to file
+    if fpath is not None:
+        with open(fpath, 'a') as f:
+            write_np_to_txt_like_kitti(f, cam_pos, "cam_pos_inv")
+            write_np_to_txt_like_kitti(f, K_homo, "K")
+    return
+
+def write_obj_pose(obj_path, obj_pose, fpath=None, obj_id=0):
+    ### write to file
+    if fpath is not None:
+        with open(fpath, 'a') as f:
+            f.write("model_path_{}: {}\n".format(obj_id, obj_path) )
+            write_np_to_txt_like_kitti(f, obj_pose, "obj_pose_{}".format(obj_id))
+
+    return
+def write_pts(pts_proj, pts_in_cam_ref, u_min, u_max, v_min, v_max, fpath, obj_id ):
+    ### write to file
+    if fpath is not None:
+        with open(fpath, 'a') as f:
+            # write_np_to_txt_like_kitti(f, cam_pos, "cam_pos_inv")
+            write_np_to_txt_like_kitti(f, pts_in_cam_ref.T, "pts_in_cam_{}".format(obj_id))
+            # write_np_to_txt_like_kitti(f, K_homo, "K")
+            write_np_to_txt_like_kitti(f, pts_proj.T, "pts_proj_{}".format(obj_id))
+
+            f.write("bbox_{}: {} {} {} {}\n".format(obj_id, u_min, u_max, v_min, v_max))
 
 def get_4x4_RT_matrix_from_blender(cam):
     """The camera local coord is defined as x-right, y-up, z-back. 

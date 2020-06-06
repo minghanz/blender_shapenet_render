@@ -33,11 +33,11 @@ g_background_source = 'COCO'
 g_background_source_annotation = "/media/sda1/datasets/extracted/COCO/annotations/instances_val2017.json"
 
 #folders to store synthetic data
-g_syn_rgb_folder = '/media/sda1/datasets/extracted/shapenet_test/syn_rgb'
-g_syn_depth_folder = '/media/sda1/datasets/extracted/shapenet_test/syn_depth'
-g_syn_pose_folder = '/media/sda1/datasets/extracted/shapenet_test/syn_pose'
-g_temp = '/media/sda1/datasets/extracted/shapenet_test/tmp_data'
-g_result_dict = '/media/sda1/datasets/extracted/shapenet_test/result.p'
+g_syn_rgb_folder = '/media/sda1/datasets/extracted/shapenet_lturn/syn_rgb'
+g_syn_depth_folder = '/media/sda1/datasets/extracted/shapenet_lturn/syn_depth'
+g_syn_pose_folder = '/media/sda1/datasets/extracted/shapenet_lturn/syn_pose'
+g_temp = '/media/sda1/datasets/extracted/shapenet_lturn/tmp_data'
+g_result_dict = '/media/sda1/datasets/extracted/shapenet_lturn/result.p'
 
 #background image composite
 #enum in [‘RELATIVE’, ‘ABSOLUTE’, ‘SCENE_SIZE’, ‘RENDER_SIZE’], default ‘RELATIVE’
@@ -47,6 +47,7 @@ g_use_film_transparent = True
 #camera:
 #enum in [‘QUATERNION’, ‘XYZ’, ‘XZY’, ‘YXZ’, ‘YZX’, ‘ZXY’, ‘ZYX’, ‘AXIS_ANGLE’]
 g_rotation_mode = 'XYZ'
+# g_rotation_mode = '‘AXIS_ANGLE’'
 g_depth_clip_start = 0.5
 g_depth_clip_end = 4
 
@@ -71,8 +72,11 @@ g_depth_use_file_extension = True
 g_engine_type = 'CYCLES'
 
 #output image size =  (g_resolution_x * resolution_percentage%, g_resolution_y * resolution_percentage%)
-g_resolution_x = 300
-g_resolution_y = 300
+# g_resolution_x = 300
+# g_resolution_y = 300
+### 852*480 is for left-turn street view
+g_resolution_x = 852
+g_resolution_y = 480
 g_resolution_percentage = 100
 
 

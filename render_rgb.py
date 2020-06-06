@@ -31,7 +31,7 @@ from render_helper import *
 from settings import *
 import settings
 
-from vp_generator import get_focal_len_from_obj_and_pose, get_bot_pts, project_pts_to_cam, get_4x4_RT_matrix_from_blender, get_K_from_blender, get_2d_bbox
+from vp_generator import get_focal_len_from_obj_and_pose, get_bot_pts, project_pts_to_cam, get_4x4_RT_matrix_from_blender, get_K_from_blender, get_2d_bbox, write_cam_pose
 
 import time
 
@@ -180,6 +180,7 @@ def render(obj_path, viewpoint):
     ### project feature points to the image coordinate
     cam_pos = get_4x4_RT_matrix_from_blender(cam_obj)
     K_homo = get_K_from_blender(cam_obj, bpy.context.scene, new_len)
+    write_cam_pose(cam_pos, K_homo, fpath)
     project_pts_to_cam(p_output, cam_pos, K_homo, fpath=fpath)
 
     ### 2D bbox 
