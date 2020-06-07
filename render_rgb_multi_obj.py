@@ -116,7 +116,8 @@ if __name__ == "__main__":
     ### 2. sample a list of objects
     ### 3. for each object, sample a pose
     start_time = time.time()
-    n_frames = 2000
+    n_frames = 85
+    bpy.context.scene.frame_set(9576)
     for i_frame in range(n_frames):
         clear_mesh()
 
