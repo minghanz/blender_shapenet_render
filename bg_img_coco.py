@@ -8,7 +8,8 @@ def get_img_ids_from_cat_name(cocoins, cat_name_list):
 
 if __name__ == "__main__":
     ### load background images info
-    coco_val2017 = COCO(annotation_file="/media/sda1/datasets/extracted/COCO/annotations/instances_val2017.json")
+    # coco_val2017 = COCO(annotation_file="/media/sda1/datasets/extracted/COCO/annotations/instances_val2017.json")
+    coco_val2017 = COCO(annotation_file="/media/sda1/datasets/extracted/COCO/annotations/person_keypoints_val2017.json")
 
     print(coco_val2017.dataset['categories'])
 

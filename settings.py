@@ -33,11 +33,11 @@ g_background_source = 'COCO'
 g_background_source_annotation = "/media/sda1/datasets/extracted/COCO/annotations/instances_val2017.json"
 
 #folders to store synthetic data
-g_syn_rgb_folder = '/media/sda1/datasets/extracted/shapenet_lturn/syn_rgb'
-g_syn_depth_folder = '/media/sda1/datasets/extracted/shapenet_lturn/syn_depth'
-g_syn_pose_folder = '/media/sda1/datasets/extracted/shapenet_lturn/syn_pose'
-g_temp = '/media/sda1/datasets/extracted/shapenet_lturn/tmp_data'
-g_result_dict = '/media/sda1/datasets/extracted/shapenet_lturn/result.p'
+g_syn_rgb_folder = '/media/sda1/datasets/extracted/shapenet_lturn_3D_black/syn_rgb'
+g_syn_depth_folder = '/media/sda1/datasets/extracted/shapenet_lturn_3D_black/syn_depth'
+g_syn_pose_folder = '/media/sda1/datasets/extracted/shapenet_lturn_3D_black/syn_pose'
+g_temp = '/media/sda1/datasets/extracted/shapenet_lturn_3D_black/tmp_data'
+g_result_dict = '/media/sda1/datasets/extracted/shapenet_lturn_3D_black/result.p'
 
 #background image composite
 #enum in [‘RELATIVE’, ‘ABSOLUTE’, ‘SCENE_SIZE’, ‘RENDER_SIZE’], default ‘RELATIVE’

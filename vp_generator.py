@@ -6,8 +6,17 @@ from render_helper import VP
 import sys
 sys.path.append("../")
 from cvo_ops.utils_general.io import write_np_to_txt_like_kitti
+from scipy.spatial.transform import Rotation
 
 import json
+
+from geometry import check_poly_intersect, check_occlusion
+
+def check_obj_occlu_intersec(obj_ground_bbox_list, obj_cam_bbox_list, obj_center_list, cam_center, i_target, i_ref):
+    intersect = check_poly_intersect(obj_ground_bbox_list[i_target], obj_ground_bbox_list[i_ref])
+    occluded = check_occlusion(obj_cam_bbox_list[i_target], obj_cam_bbox_list[i_ref], obj_center_list[i_target], obj_center_list[i_ref], cam_center)
+    return intersect or occluded
+
 def read_bg_image_anno(fpath):
     with open(fpath) as f:
         load_dict = json.load(f)
@@ -163,12 +172,76 @@ def get_2d_bbox(obj, cam_pos, K_homo, obj_pose=None, fpath=None, obj_id=0):
 
     return u_min, u_max, v_min, v_max
 
-def write_cam_pose(cam_pos, K_homo, fpath):
+def adjust_position(obj, scale, pts_corners_local, lrbtfb):
+
+    ### local center: 
+    pts_center_local = pts_corners_local[8]
+
+    ### transform corners to global coordinate
+    obj_pose = np.array(obj.matrix_world)  # matrix_world includes RT, scale, axis change
+    # print(obj.matrix_world)
+    # print(np.matrix(obj.matrix_world))
+    # print(np.array(obj.matrix_world))
+    # print("-----------------")
+    pts_corners_local_homo = np.hstack( (pts_corners_local, np.ones((pts_corners_local.shape[0], 1), dtype=np.float32)) ) # 9*4
+    pts_corners_global_homo = obj_pose.dot(pts_corners_local_homo.T).T
+    pts_center_global_homo = pts_corners_global_homo[8]
+    pts_corners_global_homo = pts_corners_global_homo[:8]
+
+    adjusted_pose = obj_pose.copy()
+    adjusted_pose[:, 3] = pts_center_global_homo
+
+    ### process the dimension and rotation
+    left, right, bottom, top, front, back = lrbtfb
+    length = (back - front) * scale
+    height = (top - bottom) * scale
+    width = (right - left) * scale
+    
+    lwh = np.array([length, width, height], dtype=np.float32)
+
+    return pts_corners_global_homo, pts_center_global_homo, lwh
+
+def get_3d_bbox_raw(obj):
+    pts = np.array([ v.co for v in obj.data.vertices]) #N*3 # x-right, y-up, z-back (see README of ShapeNetCore), shape: N*3 
+    left = pts[:,0].min()
+    right = pts[:,0].max()
+    bottom = pts[:,1].min()
+    top = pts[:,1].max()
+    front = pts[:,2].min()
+    back = pts[:,2].max()
+
+    lrbtfb = np.array([left, right, bottom, top, front, back], dtype=np.float32)
+    print(left, right, bottom, top, front, back)
+
+    pts_corners_local = np.array([
+        [left, bottom, front], 
+        [left, bottom, back], 
+        [right, bottom, back], 
+        [right, bottom, front], 
+        [left, top, front], 
+        [left, top, back], 
+        [right, top, back], 
+        [right, top, front], 
+        [(left+right)*0.5, (top+bottom)*0.5, (front+back)*0.5]], dtype=np.float32) # 9*3
+
+    return pts_corners_local, lrbtfb
+
+def write_3d_bbox(scale, yaw, pts_corners_global_homo, pts_center_global_homo, lwh, fpath=None, obj_id=0):
+    length, width, height = lwh
+    if fpath is not None:
+        with open(fpath, "a") as f:
+            f.write("lwh_yaw_scale_{}: {} {} {} {} {}\n".format(obj_id, length, width, height, yaw, scale))
+            write_np_to_txt_like_kitti(f, pts_corners_global_homo, "3dbox_{}".format(obj_id))
+            write_np_to_txt_like_kitti(f, pts_center_global_homo, "center_{}".format(obj_id))
+
+
+def write_cam_pose(cam_obj, cam_pos, K_homo, fpath):
     ### write to file
     if fpath is not None:
         with open(fpath, 'a') as f:
             write_np_to_txt_like_kitti(f, cam_pos, "cam_pos_inv")
             write_np_to_txt_like_kitti(f, K_homo, "K")
+            f.write("cam_hwf: {} {} {}\n".format(cam_obj.data.sensor_height, cam_obj.data.sensor_width, cam_obj.data.lens))
     return
 
 def write_obj_pose(obj_path, obj_pose, fpath=None, obj_id=0):

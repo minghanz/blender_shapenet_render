@@ -98,7 +98,6 @@ def node_setting_init():
     mainly for compositing the background images
     """
 
-
     bpy.context.scene.use_nodes = True
     tree = bpy.context.scene.node_tree
     links = tree.links
@@ -106,19 +105,48 @@ def node_setting_init():
     for node in tree.nodes:
         tree.nodes.remove(node)
     
-    image_node = tree.nodes.new('CompositorNodeImage')
-    scale_node = tree.nodes.new('CompositorNodeScale')
-    alpha_over_node = tree.nodes.new('CompositorNodeAlphaOver')
     render_layer_node = tree.nodes.new('CompositorNodeRLayers')
     file_output_node = tree.nodes.new('CompositorNodeOutputFile')
 
-    scale_node.space = g_scale_space
-    file_output_node.base_path = g_syn_rgb_folder
+    # ### if we want to render image with background
+    # image_node = tree.nodes.new('CompositorNodeImage')
+    # scale_node = tree.nodes.new('CompositorNodeScale')
+    # alpha_over_node = tree.nodes.new('CompositorNodeAlphaOver')
 
-    links.new(image_node.outputs[0], scale_node.inputs[0])
-    links.new(scale_node.outputs[0], alpha_over_node.inputs[1])
-    links.new(render_layer_node.outputs[0], alpha_over_node.inputs[2])
-    links.new(alpha_over_node.outputs[0], file_output_node.inputs[0])
+    # scale_node.space = g_scale_space
+    # file_output_node.base_path = g_syn_rgb_folder
+    # if not os.path.exists(file_output_node.base_path):
+    #     os.makedirs(file_output_node.base_path)
+
+    # links.new(image_node.outputs[0], scale_node.inputs[0])
+    # links.new(scale_node.outputs[0], alpha_over_node.inputs[1])
+    # links.new(render_layer_node.outputs[0], alpha_over_node.inputs[2])
+    # links.new(alpha_over_node.outputs[0], file_output_node.inputs[0])
+
+    ### render black background image
+    file_output_node.base_path = g_syn_rgb_folder
+    if not os.path.exists(file_output_node.base_path):
+        os.makedirs(file_output_node.base_path)
+
+    links.new(render_layer_node.outputs[0], file_output_node.inputs[0]) # render_layer_node [0] is image, [1] is alpha (binary mask), [2] is depth
+
+    #### render silhouette output image here
+    #### https://blender.stackexchange.com/questions/42579/render-depth-map-to-image-with-python-script
+    # map_range_node_2 = tree.nodes.new('CompositorNodeMapRange')
+    # map_range_node_2.inputs[1].default_value = 1
+    # map_range_node_2.inputs[2].default_value = 100
+    # map_range_node_2.inputs[3].default_value = 1
+    # map_range_node_2.inputs[4].default_value = 10
+    
+    file_output_node_2 = tree.nodes.new('CompositorNodeOutputFile')
+    file_output_node_2.base_path = g_syn_depth_folder
+    if not os.path.exists(file_output_node_2.base_path):
+        os.makedirs(file_output_node_2.base_path)
+
+    # links.new(render_layer_node.outputs[2], map_range_node_2.inputs[0])
+    # links.new(map_range_node_2.outputs[0], file_output_node_2.inputs[0])
+    links.new(render_layer_node.outputs[1], file_output_node_2.inputs[0]) # render_layer_node [0] is image, [1] is alpha (binary mask), [2] is depth
+
 
 def render(obj_path, viewpoint):
     """render rbg image 

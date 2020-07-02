@@ -10,6 +10,12 @@ def show_kpt(fid):
     img_path = '/media/sda1/datasets/extracted/shapenet_lturn/syn_rgb/train/blender-{:06d}.color.png'.format(fid)
     txt_path = '/media/sda1/datasets/extracted/shapenet_lturn/syn_rgb/train/blender-{:06d}.color.txt'.format(fid)
 
+    # img_path = '/media/sda1/datasets/extracted/shapenet_60/syn_rgb/car/train/blender-{:06d}.color.png'.format(fid)
+    # txt_path = '/media/sda1/datasets/extracted/shapenet_60/syn_rgb/car/train/blender-{:06d}.color.txt'.format(fid)
+
+    img_path = '/media/sda1/datasets/extracted/shapenet_lturn_3D/syn_rgb/blender-{:06d}.color.png'.format(fid)
+    txt_path = '/media/sda1/datasets/extracted/shapenet_lturn_3D/syn_rgb/blender-{:06d}.color.txt'.format(fid)
+
     img = cv2.imread(img_path)
 
     img = draw_from_txt(img, txt_path)
@@ -62,5 +68,5 @@ def show_kpt(fid):
     # cv2.imwrite("{}.jpg".format(fid), img)
 
 if __name__ == "__main__":
-    for fid in range(1,101):
+    for fid in range(51,56):
         show_kpt(fid)

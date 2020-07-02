@@ -6,6 +6,9 @@
 ### 4. sample a background image
 ### 5. render
 
+######## shapenet coordinate: # x-right, y-up, z-back (see README of ShapeNetCore), shape: N*3, see vp_generator.py get_bot_pts()
+######## blender coordinate: # x-right, y-front, z-up, shape: N*3, see vp_generator.py get_bot_pts()
+######## blender camera local coordinate: x-right, y-up, z-back. right-down-front, see this file set_cam_pose()
 import sys
 import os
 import random
@@ -22,7 +25,8 @@ from render_helper import *
 from settings import *
 import settings
 
-from vp_generator import get_focal_len_from_obj_and_pose, get_bot_pts, project_pts_to_cam, get_4x4_RT_matrix_from_blender, get_K_from_blender, get_2d_bbox, write_cam_pose, write_obj_pose, write_pts
+from vp_generator import get_focal_len_from_obj_and_pose, get_bot_pts, project_pts_to_cam, get_4x4_RT_matrix_from_blender, get_K_from_blender, get_2d_bbox, write_cam_pose, write_obj_pose, write_pts, \
+    get_3d_bbox_raw, adjust_position, write_3d_bbox, check_obj_occlu_intersec
 
 import time
 
@@ -31,6 +35,10 @@ import numpy as np
 
 from render_rgb import init_all, clear_mesh
 from scipy.spatial.transform import Rotation
+
+# from PIL import Image
+# import matplotlib.image as mpimg 
+import cv2
 
 def set_cam_pose(R, t):
     ### set camera extrinsics
@@ -55,7 +63,7 @@ def set_cam_pose(R, t):
     cam_obj.rotation_euler[2] = euler_xyz[2]
 
     bpy.context.view_layer.update() # this is necessary for the change to be applied on cam_obj.matrix_world
-    return
+    return t_cam
 
 def set_cam_K_by_focal(f_factor):
     cam_obj = bpy.data.objects['Camera']
@@ -107,17 +115,19 @@ if __name__ == "__main__":
     obj_list = random_sample_objs(0)['car']
     # background_img_list = gen_list_of_valid_background_img()
     bg_folder = "/home/minghanz/Pictures/empty_road"
-    background_img_list = [os.path.join(bg_folder, x) for x in os.listdir(bg_folder)]
+    background_img_list = [os.path.join(bg_folder, x) for x in os.listdir(bg_folder) if x.endswith(".png")]
 
     traf_cam_pose_sampler = TrafCamPoseSampler()
 
+    valid_static_mask = cv2.imread("/home/minghanz/Pictures/empty_road/mask/road_mask.png")[:,:,0]
 
     ### 1. sample a camera viewpoint
     ### 2. sample a list of objects
     ### 3. for each object, sample a pose
     start_time = time.time()
-    n_frames = 85
-    bpy.context.scene.frame_set(9576)
+    n_frames = int((10000 - 6665) /5)
+    bpy.context.scene.frame_set(6666)
+    # n_frames = 1000
     for i_frame in range(n_frames):
         clear_mesh()
 
@@ -131,12 +141,13 @@ if __name__ == "__main__":
         # K, R, tvec, distCoeffs = traf_cam_pose_sampler.T_from_focal(focal_length_factor)
         K = set_cam_K_by_focal(focal_length_factor)
         R, tvec, distCoeffs = traf_cam_pose_sampler.T_from_K(K)
-        set_cam_pose(R, tvec)
+        cam_location = set_cam_pose(R, tvec)
 
         for k_views in range(m_views):
             ### set up this frame
             current_frame = bpy.context.scene.frame_current
-            file_output_node = bpy.context.scene.node_tree.nodes[4]
+            file_output_node = bpy.context.scene.node_tree.nodes[1] # 4 when rendering image with background
+            file_output_node_2 = bpy.context.scene.node_tree.nodes[2] # 4 when rendering image with background
             
             ### gen txt file with the same name as the output image
             fpath = os.path.join(file_output_node.base_path, 'blender-{:06d}.color.txt'.format(current_frame))
@@ -151,7 +162,7 @@ if __name__ == "__main__":
             ### write cam pose
             cam_pos = get_4x4_RT_matrix_from_blender(bpy.data.objects['Camera'])
             K_homo = np.concatenate([K, np.zeros((3,1))], axis=1)
-            write_cam_pose(cam_pos, K_homo, fpath)
+            write_cam_pose(bpy.data.objects['Camera'], cam_pos, K_homo, fpath)
 
             # n_objs = 3
             # ## sample in a batch
@@ -162,10 +173,16 @@ if __name__ == "__main__":
             if k_views == 0:
                 obj_path_dict = {}
                 obj_name_list = [None]*n_objs
+
+            obj_ground_bbox_list = [None]*n_objs
+            obj_cam_bbox_list = [None]*n_objs
+            obj_center_list = [None]*n_objs
+
             for j_obj in range(n_objs):
-                valid_obj = False
-                while not valid_obj:
-                    if k_views == 0:
+                valid_obj = False if k_views == 0 else True
+                valid_view = False
+                while not (valid_obj and valid_view):
+                    if not valid_obj:
                         ### sample object model, position and rotation
                         obj_cur = random.choice(obj_list)
                         ### import the object
@@ -177,20 +194,23 @@ if __name__ == "__main__":
                     else:
                         obj_cur = obj_path_dict[obj_name_list[j_obj]]
                         target_obj = bpy.data.objects[obj_name_list[j_obj]]
-                        valid_obj = True
-                        fpath_valid = fpath
+                        fpath_valid = None
 
                     # for obj in bpy.data.objects:
                     #     print(obj.name)
+                    ### first analysis the object geometry property, decide its location by object dimension (set lowest to 0)
+                    pts_corners_local, lrbtfb = get_3d_bbox_raw(target_obj) # 8*3 and 6
 
                     ### sample position
                     position = traf_cam_pose_sampler.samp_pts_3d_from_2d(cam_pos, K_homo)
                     yaw = random.random()*2*np.pi
                     scale = random.uniform(3,8)
 
+                    bottom = lrbtfb[2]
+                    position[2] -= bottom*scale    # to make sure the lowest point of vehicle touches ground z=0
+
                     ### set position
                     set_obj_pose(target_obj, yaw, position, scale)
-                    write_obj_pose(obj_cur, np.array(target_obj.matrix_world), fpath=fpath_valid, obj_id=j_obj)
 
                     ### get GT output
                     p_output = get_bot_pts(target_obj, fpath=fpath_valid, obj_id=j_obj)
@@ -199,25 +219,48 @@ if __name__ == "__main__":
                     ### 2D bbox 
                     u_min, u_max, v_min, v_max = get_2d_bbox(target_obj, cam_pos, K_homo, fpath=fpath_valid, obj_id=j_obj)
 
+                    ### 3D bbox
+                    ### adjust model pose to perceptual pose (make position the geometric center)
+                    pts_corners_global_homo, pts_center_global_homo, lwh = adjust_position(target_obj, scale, pts_corners_local, lrbtfb)
+                    write_obj_pose(obj_cur, np.array(target_obj.matrix_world), fpath=fpath_valid, obj_id=j_obj)
+                    write_3d_bbox(scale, yaw, pts_corners_global_homo, pts_center_global_homo, lwh, fpath=fpath_valid, obj_id=j_obj)
+
+                    obj_ground_bbox_list[j_obj] = pts_corners_global_homo[:4,:2]
+                    obj_cam_bbox_list[j_obj] = np.array([[u_min, v_min], [u_min, v_max], [u_max, v_max], [u_max, v_min] ])
+                    obj_center_list[j_obj] = pts_center_global_homo[:3]
+
+                    mean_pts_proj = pts_proj.mean(axis=1)[:2].round().astype(int)
+                    valid_view = mean_pts_proj[0] >= 0 and mean_pts_proj[0] <= valid_static_mask.shape[1]-1 and mean_pts_proj[1] >= 0 and mean_pts_proj[1] <= valid_static_mask.shape[0]-1
+                    if valid_view:
+                        valid_view = valid_static_mask[mean_pts_proj[1], mean_pts_proj[0]] > 0
+                    if j_obj != 0:
+                        invalid = False
+                        for j_ref in range(0, j_obj):
+                            invalid = invalid or check_obj_occlu_intersec(obj_ground_bbox_list, obj_cam_bbox_list, obj_center_list, cam_location, j_obj, j_ref)
+                        valid_view = valid_view and not invalid
+
                     if k_views == 0:
                         valid_obj = (u_max - u_min) < 2 * (pts_proj[0].max() - pts_proj[0].min())
                         if not valid_obj:
                             print("delete the invalid object!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                             bpy.ops.object.delete()
-                if k_views == 0:
-                    write_obj_pose(obj_cur, np.array(target_obj.matrix_world), fpath=fpath, obj_id=j_obj)
-                    write_pts(pts_proj, pts_in_cam_ref, u_min, u_max, v_min, v_max, fpath=fpath, obj_id=j_obj )
+                    else:
+                        valid_obj = True
+                write_obj_pose(obj_cur, np.array(target_obj.matrix_world), fpath=fpath, obj_id=j_obj)
+                write_pts(pts_proj, pts_in_cam_ref, u_min, u_max, v_min, v_max, fpath=fpath, obj_id=j_obj )
+                write_3d_bbox(scale, yaw, pts_corners_global_homo, pts_center_global_homo, lwh, fpath=fpath, obj_id=j_obj)
 
         
             if not os.path.exists(g_syn_rgb_folder):
                 os.mkdir(g_syn_rgb_folder)
 
-            ### load the background image
-            image_node = bpy.context.scene.node_tree.nodes[0]
-            image_node.image = bpy.data.images.load(bgimg_path)
+            # ### load the background image
+            # image_node = bpy.context.scene.node_tree.nodes[0]
+            # image_node.image = bpy.data.images.load(bgimg_path)
 
             ### set the output file name
             file_output_node.file_slots[0].path = 'blender-######.color.png' # blender placeholder #
+            file_output_node_2.file_slots[0].path = 'blender-######.color.png' # blender placeholder #
 
             ### start rendering
             bpy.ops.render.render(write_still=True)
