@@ -35,8 +35,8 @@ from vp_generator import get_focal_len_from_obj_and_pose, get_bot_pts, project_p
 
 import time
 
-### preload all background image paths
-background_img_list = gen_list_of_valid_background_img()
+# ### preload all background image paths ### for COCO
+# background_img_list = gen_list_of_valid_background_img()
 
 def clear_mesh():
     """ clear all meshes in the secene
@@ -146,6 +146,22 @@ def node_setting_init():
     # links.new(render_layer_node.outputs[2], map_range_node_2.inputs[0])
     # links.new(map_range_node_2.outputs[0], file_output_node_2.inputs[0])
     links.new(render_layer_node.outputs[1], file_output_node_2.inputs[0]) # render_layer_node [0] is image, [1] is alpha (binary mask), [2] is depth
+
+    ### Now, add environment texture node to render objects with more realistic environmental reflections
+    ### https://blender.stackexchange.com/questions/132271/blender-2-8-get-environment-texture-path-from-ui-to-python-script
+    wtree = bpy.context.scene.world.node_tree
+    enode = wtree.nodes.new("ShaderNodeTexEnvironment")
+    # bnode = wtree.nodes.new("ShaderNodeBrightContrast")
+    # bnode.inputs['Bright'].default_value = -0.05    # inputs[1]
+    # bnode.inputs['Contrast'].default_value = 0    # inputs[2]
+    # wtree.links.new(enode.outputs['Color'], bnode.inputs['Color'])
+    # wtree.links.new(bnode.outputs['Color'], wtree.nodes["World Output"].inputs['Surface'])
+
+    wtree.links.new(enode.outputs['Color'], wtree.nodes["World Output"].inputs['Surface'])
+    ### This is only linking the node, but the image file is not loaded yet for enode. 
+    bpy.context.scene.render.film_transparent = True
+    ### This is to hide the context image from showing up as background. https://www.youtube.com/watch?v=ZzkFglEMkA8
+    ### The command is from the blender python info panel. 
 
 
 def render(obj_path, viewpoint):
@@ -279,8 +295,17 @@ def init_all():
     cam_obj = bpy.data.objects['Camera']
     cam_obj.rotation_mode = g_rotation_mode
 
-    bpy.data.objects['Light'].data.energy = 100
+    # bpy.data.objects['Light'].data.energy = 10000
+    bpy.data.objects['Light'].data.energy = 0
     bpy.ops.object.light_add(type='SUN')
+    sun_obj = bpy.context.object
+    sun_obj.data.energy = 3 #20
+
+    bpy.ops.preferences.addon_enable(module="sun_position")     ### cannot omit module=
+    ### later can use bpy.context.preferences.addons.get("sun_position") to retrieve the add on and use addon.preferences to get the dict of the config of this addon. 
+    ### can use bpy.context.preferences.addons.keys() to get all enabled addons. 
+    bpy.context.scene.sun_pos_properties.usage_mode = "HDR"
+    bpy.context.scene.sun_pos_properties.sun_object = sun_obj
 
 def set_image_path(new_path):
     """ set image output path to new_path

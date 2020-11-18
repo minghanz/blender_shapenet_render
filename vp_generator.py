@@ -3,14 +3,23 @@ import random
 
 from render_helper import VP
 
-import sys
-sys.path.append("../")
-from cvo_ops.utils_general.io import write_np_to_txt_like_kitti
+# import sys
+# sys.path.append("../")
+# from c3d.utils_general.io import write_np_to_txt_like_kitti
 from scipy.spatial.transform import Rotation
 
 import json
 
 from geometry import check_poly_intersect, check_occlusion
+
+# from c3d.utils_general.io import write_np_to_txt_like_kitti
+def write_np_to_txt_like_kitti(f, array, name):
+    if isinstance(array, (list, tuple, np.ndarray)):
+        if isinstance(array, np.ndarray):
+            array = array.reshape(-1)
+        f.write("{}: ".format(name) + " ".join(str(x) for x in array) + "\n" )
+    else:
+        f.write("{}: ".format(name) + str(array) + "\n" )
 
 def check_obj_occlu_intersec(obj_ground_bbox_list, obj_cam_bbox_list, obj_center_list, cam_center, i_target, i_ref):
     intersect = check_poly_intersect(obj_ground_bbox_list[i_target], obj_ground_bbox_list[i_ref])
@@ -20,7 +29,7 @@ def check_obj_occlu_intersec(obj_ground_bbox_list, obj_cam_bbox_list, obj_center
 def read_bg_image_anno(fpath):
     with open(fpath) as f:
         load_dict = json.load(f)
-    print(load_dict.keys)
+    print("load_dict.keys", load_dict.keys)
     return load_dict
 
 def gen_rand_vp():
@@ -62,7 +71,7 @@ def get_focal_len_from_obj_and_pose(obj, cam, view_dist=None, fpath=None):
     # obj_max_dim = np.array(dim).max()
     obj_max_dim = np.sqrt((np.array(dim) ** 2).sum())
     # obj_max_dim = np.sqrt(dim[1]**2 + dim[2]**2)
-    print(obj_max_dim)
+    print("obj_max_dim", obj_max_dim)
 
     ### calculate the desired FOV with the object scale and camera distance
     if view_dist is not None:
@@ -98,8 +107,8 @@ def get_bot_pts(obj, fpath=None, obj_id=0):
     vertices = obj.data.vertices
     pts = np.array([ v.co for v in vertices])   # x-right, y-up, z-back (see README of ShapeNetCore), shape: N*3 
     # pts = np.array([(obj.matrix_world @ v.co) for v in vertices])   # x-right, y-front, z-up, shape: N*3 
-    print("pts.shape", pts.shape)
-    print("pts.dtype", pts.dtype)
+    # print("pts.shape", pts.shape)
+    # print("pts.dtype", pts.dtype)
     ## obj.matrix_world (4*4) is a Matrix type, vertices[0].co (3) is a Vector type, both of blender specific type, not numpy type
 
     ### get the lowest point of each quater of the vehicle
@@ -211,7 +220,7 @@ def get_3d_bbox_raw(obj):
     back = pts[:,2].max()
 
     lrbtfb = np.array([left, right, bottom, top, front, back], dtype=np.float32)
-    print(left, right, bottom, top, front, back)
+    print("lrbtfb", left, right, bottom, top, front, back)
 
     pts_corners_local = np.array([
         [left, bottom, front], 

@@ -25,7 +25,7 @@ g_render_objs = ['car']
 #change this path to your background image folder
 # g_background_image_path = 'background_image'
 # g_background_image_path = '/media/sda1/datasets/extracted/STREETS/2018-8-21_2018-8-27/2018-8-21/Almond at Julie North'
-g_background_image_path = '/media/sda1/datasets/extracted/COCO/val2017'
+# g_background_image_path = '/media/sda1/datasets/extracted/COCO/val2017' ### see later in this file
 g_background_source = 'COCO'    
 ## If g_background_source is specified as 'COCO', the background will be from COCO dataset, and the category of background images will be checked to be mutual exclusive with object categories. 
 ## Currently only support 'car' because of inconsistency between the taxonomy of the two datasets. 
@@ -33,11 +33,14 @@ g_background_source = 'COCO'
 g_background_source_annotation = "/media/sda1/datasets/extracted/COCO/annotations/instances_val2017.json"
 
 #folders to store synthetic data
-g_syn_rgb_folder = '/media/sda1/datasets/extracted/shapenet_lturn_3D_black/syn_rgb'
-g_syn_depth_folder = '/media/sda1/datasets/extracted/shapenet_lturn_3D_black/syn_depth'
-g_syn_pose_folder = '/media/sda1/datasets/extracted/shapenet_lturn_3D_black/syn_pose'
-g_temp = '/media/sda1/datasets/extracted/shapenet_lturn_3D_black/tmp_data'
-g_result_dict = '/media/sda1/datasets/extracted/shapenet_lturn_3D_black/result.p'
+g_output_root = '/media/sda1/datasets/extracted/shapenet_lturn_3D_texture/'
+g_syn_rgb_folder = g_output_root + '/' + 'images/foreground'    # syn_rgb
+g_syn_depth_folder = g_output_root + '/' + 'images/fg_weight'   # syn_depth
+g_syn_pose_folder =  g_output_root + '/' + 'syn_pose'
+g_temp =  g_output_root + '/' + 'tmp_data'
+g_result_dict = g_output_root + '/' + 'result.p'
+
+g_txt_folder = g_output_root + '/' + 'labels/blender'
 
 #background image composite
 #enum in [‘RELATIVE’, ‘ABSOLUTE’, ‘SCENE_SIZE’, ‘RENDER_SIZE’], default ‘RELATIVE’
@@ -71,12 +74,25 @@ g_depth_use_file_extension = True
 #engine type [CYCLES, BLENDER_RENDER]
 g_engine_type = 'CYCLES'
 
+g_scene_name = 'lturn'
+# g_scene_name = 'KoPER'
+g_scene_sub_id = 4
+
 #output image size =  (g_resolution_x * resolution_percentage%, g_resolution_y * resolution_percentage%)
 # g_resolution_x = 300
 # g_resolution_y = 300
 ### 852*480 is for left-turn street view
 g_resolution_x = 852
 g_resolution_y = 480
+# g_mask_path = "/home/minghanz/Pictures/empty_road/mask/road_mask.png"
+# g_background_image_path = "/home/minghanz/Pictures/empty_road"
+# ### 852*480 is for KoPER
+# g_resolution_x = 656
+# g_resolution_y = 494
+# g_mask_path = "/media/sda1/datasets/extracted/KoPER/added/SK_4_empty_road_mask.png"
+# g_mask_path = "/media/sda1/datasets/extracted/KoPER/added/SK_4_empty_road_mask.png"
+# g_background_image_path = "/media/sda1/datasets/extracted/KoPER/added/empty_mask_4"
+
 g_resolution_percentage = 100
 
 

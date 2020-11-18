@@ -111,31 +111,38 @@ if __name__ == "__main__":
 
     init_all()
 
+    traf_cam_pose_sampler = TrafCamPoseSampler(name=g_scene_name, sub_id=g_scene_sub_id)
+    g_background_image_path = traf_cam_pose_sampler.get_bg_path()
+    g_mask_path = traf_cam_pose_sampler.get_mask_path()
+
     ### 0. get the collection of objects and background images
     obj_list = random_sample_objs(0)['car']
     # background_img_list = gen_list_of_valid_background_img()
-    bg_folder = "/home/minghanz/Pictures/empty_road"
-    background_img_list = [os.path.join(bg_folder, x) for x in os.listdir(bg_folder) if x.endswith(".png")]
+    bg_folder = g_background_image_path# "/home/minghanz/Pictures/empty_road"
+    # background_img_list = [os.path.join(bg_folder, x) for x in os.listdir(bg_folder) if x.endswith(".png")]
+    background_img_list = [os.path.join(bg_folder, x) for x in os.listdir(bg_folder) if x.endswith(".hdr")]
 
-    traf_cam_pose_sampler = TrafCamPoseSampler()
 
-    valid_static_mask = cv2.imread("/home/minghanz/Pictures/empty_road/mask/road_mask.png")[:,:,0]
+    valid_static_mask = cv2.imread(g_mask_path)[:,:,0]
 
     ### 1. sample a camera viewpoint
     ### 2. sample a list of objects
     ### 3. for each object, sample a pose
     start_time = time.time()
-    n_frames = int((10000 - 6665) /5)
-    bpy.context.scene.frame_set(6666)
+    n_frames = int(1000 / 5)
+    # n_frames = int((11135 - 10135) /5)
+    # bpy.context.scene.frame_set(10136)
     # n_frames = 1000
     for i_frame in range(n_frames):
         clear_mesh()
 
-        n_objs = random.randrange(1, 6)
+        # n_objs = random.randrange(1, 6)
+        n_objs = random.randrange(1, 9)
         m_views = 5#random.randrange(3, 8)
 
         ### sample camera focal length
-        focal_length_factor = random.uniform(0.1, 0.5)
+        # focal_length_factor = random.uniform(0.1, 0.5)
+        focal_length_factor = random.uniform(0.2, 0.7)
 
         ### set the camera extrinsics
         # K, R, tvec, distCoeffs = traf_cam_pose_sampler.T_from_focal(focal_length_factor)
@@ -143,19 +150,34 @@ if __name__ == "__main__":
         R, tvec, distCoeffs = traf_cam_pose_sampler.T_from_K(K)
         cam_location = set_cam_pose(R, tvec)
 
+
+        ### sample bg image
+        bgimg_path = random.choice(background_img_list)
+
+        # ### load the background image
+        # image_node = bpy.context.scene.node_tree.nodes[2] # 2 when rendering image with background
+        # image_node.image = bpy.data.images.load(bgimg_path)
+
+        ### load the background image for environment texture (lighting, reflection)
+        ### https://blender.stackexchange.com/questions/132271/blender-2-8-get-environment-texture-path-from-ui-to-python-script
+        image_node = bpy.context.scene.world.node_tree.nodes['Environment Texture']
+        image_node.image = bpy.data.images.load(bgimg_path)
+
         for k_views in range(m_views):
             ### set up this frame
             current_frame = bpy.context.scene.frame_current
-            file_output_node = bpy.context.scene.node_tree.nodes[1] # 4 when rendering image with background
-            file_output_node_2 = bpy.context.scene.node_tree.nodes[2] # 4 when rendering image with background
+            file_output_node = bpy.context.scene.node_tree.nodes[1] # 1 when rendering image with background
+            file_output_node_2 = bpy.context.scene.node_tree.nodes[2] # 2 when not, 5 when rendering image with background
             
             ### gen txt file with the same name as the output image
-            fpath = os.path.join(file_output_node.base_path, 'blender-{:06d}.color.txt'.format(current_frame))
+            # fpath = os.path.join(file_output_node.base_path, 'blender-{:06d}.color.txt'.format(current_frame))
+            fpath = os.path.join(g_txt_folder, 'blender-{:06d}.color.txt'.format(current_frame))
+            if not os.path.exists(os.path.dirname(fpath)):
+                os.makedirs(os.path.dirname(fpath))
+
             open(fpath, 'w').close()
 
-
-            ### sample bg image
-            bgimg_path = random.choice(background_img_list)
+            ### write background image (environment texture) paths
             with open(fpath, 'a') as f:
                 f.write("bg_image_path: {}\n".format(bgimg_path))
 
@@ -202,9 +224,10 @@ if __name__ == "__main__":
                     pts_corners_local, lrbtfb = get_3d_bbox_raw(target_obj) # 8*3 and 6
 
                     ### sample position
-                    position = traf_cam_pose_sampler.samp_pts_3d_from_2d(cam_pos, K_homo)
-                    yaw = random.random()*2*np.pi
-                    scale = random.uniform(3,8)
+                    # position = traf_cam_pose_sampler.samp_pts_3d_from_2d(cam_pos, K_homo)
+                    position = traf_cam_pose_sampler.samp_pts_3d_from_bev()
+                    yaw = traf_cam_pose_sampler.samp_yaw()
+                    scale = random.uniform(5,8)
 
                     bottom = lrbtfb[2]
                     position[2] -= bottom*scale    # to make sure the lowest point of vehicle touches ground z=0
@@ -246,6 +269,14 @@ if __name__ == "__main__":
                             bpy.ops.object.delete()
                     else:
                         valid_obj = True
+                ### modify the texture of the object so that they can reflect environment texture. 
+                ### https://blender.stackexchange.com/questions/4817/how-to-know-which-object-is-using-a-material
+                # if k_views == 0:
+                for slot in target_obj.material_slots:
+                    if slot.material != None:
+                        slot.material.node_tree.nodes["Principled BSDF"].inputs[4].default_value = random.uniform(0.6, 0.9) # 0.7
+                        slot.material.node_tree.nodes["Principled BSDF"].inputs[7].default_value = random.uniform(0, 0.2) # 0.2
+
                 write_obj_pose(obj_cur, np.array(target_obj.matrix_world), fpath=fpath, obj_id=j_obj)
                 write_pts(pts_proj, pts_in_cam_ref, u_min, u_max, v_min, v_max, fpath=fpath, obj_id=j_obj )
                 write_3d_bbox(scale, yaw, pts_corners_global_homo, pts_center_global_homo, lwh, fpath=fpath, obj_id=j_obj)
@@ -254,9 +285,11 @@ if __name__ == "__main__":
             if not os.path.exists(g_syn_rgb_folder):
                 os.mkdir(g_syn_rgb_folder)
 
-            # ### load the background image
-            # image_node = bpy.context.scene.node_tree.nodes[0]
-            # image_node.image = bpy.data.images.load(bgimg_path)
+            ### set the sunlight direction  (need to enable the sun_position addon in prior)
+            bpy.context.scene.sun_pos_properties.hdr_elevation = random.uniform(0, np.pi)
+            bpy.context.scene.sun_pos_properties.hdr_azimuth = random.uniform(0, 2*np.pi)
+
+            print("Sun location:", bpy.data.objects['Sun'].location[0], bpy.data.objects['Sun'].location[1], bpy.data.objects['Sun'].location[2])
 
             ### set the output file name
             file_output_node.file_slots[0].path = 'blender-######.color.png' # blender placeholder #
@@ -266,6 +299,6 @@ if __name__ == "__main__":
             bpy.ops.render.render(write_still=True)
             bpy.context.scene.frame_set(current_frame + 1)
 
-        
+        print("time: ", time.asctime())
     end_time = time.time()
     print("total_time", end_time-start_time)
